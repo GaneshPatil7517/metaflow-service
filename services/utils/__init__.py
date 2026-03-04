@@ -7,7 +7,7 @@ from multidict import MultiDict
 from urllib.parse import urlencode, quote
 from aiohttp import web
 from functools import wraps
-from typing import Dict
+from typing import Any, Callable, Dict, List, Optional
 import logging
 import psycopg2
 from distutils.version import LooseVersion
@@ -31,7 +31,7 @@ logging.basicConfig(level=log_level)
 ORIGIN_TO_ALLOW_CORS_FROM = os.environ.get('ORIGIN_TO_ALLOW_CORS_FROM', None)
 
 
-async def read_body(request_content):
+async def read_body(request_content: web.StreamResponse) -> Any:
     byte_array = bytearray()
     while not request_content.at_eof():
         data = await request_content.read(4)
@@ -40,7 +40,7 @@ async def read_body(request_content):
     return json.loads(byte_array.decode("utf-8"))
 
 
-def get_traceback_str():
+def get_traceback_str() -> str:
     """Get the traceback as a string."""
 
     exc_info = sys.exc_info()
@@ -57,7 +57,7 @@ def get_traceback_str():
     )
 
 
-def http_500(msg, id, traceback_str=get_traceback_str()):
+def http_500(msg: str, id: Optional[str], traceback_str: str = get_traceback_str()) -> web.Response:
     # NOTE: worth considering if we want to expose tracebacks in the future in the api messages.
     body = {
         'id': id,
@@ -71,7 +71,7 @@ def http_500(msg, id, traceback_str=get_traceback_str()):
     return web_response(500, body)
 
 
-def handle_exceptions(func):
+def handle_exceptions(func: Callable) -> Callable:
     """Catch exceptions and return appropriate HTTP error."""
 
     @wraps(func)
@@ -92,7 +92,7 @@ def handle_exceptions(func):
     return wrapper
 
 
-def format_response(func):
+def format_response(func: Callable) -> Callable:
     """handle formatting"""
 
     @wraps(func)
@@ -106,7 +106,7 @@ def format_response(func):
     return wrapper
 
 
-def web_response(status: int, body):
+def web_response(status: int, body: Any) -> web.Response:
     headers = MultiDict(
         {"Content-Type": "application/json",
          METADATA_SERVICE_HEADER: METADATA_SERVICE_VERSION})
@@ -122,7 +122,7 @@ def web_response(status: int, body):
                         headers=headers)
 
 
-def format_qs(query: Dict[str, str], overwrite=None):
+def format_qs(query: Dict[str, str], overwrite: Optional[Dict[str, str]] = None) -> str:
     q = dict(query)
     if overwrite:
         for key in overwrite:
@@ -131,7 +131,7 @@ def format_qs(query: Dict[str, str], overwrite=None):
     return ("?" if len(qs) > 0 else "") + qs
 
 
-def format_baseurl(request: web.BaseRequest):
+def format_baseurl(request: web.BaseRequest) -> str:
     scheme = request.headers.get("X-Forwarded-Proto") or request.scheme
     host = request.headers.get("X-Forwarded-Host") or request.host
     # Only get the first Forwarded-Host/Proto in case there are more than one
@@ -142,7 +142,7 @@ def format_baseurl(request: web.BaseRequest):
     return "{baseurl}{path}".format(baseurl=baseurl, path=request.path)
 
 
-def has_heartbeat_capable_version_tag(system_tags):
+def has_heartbeat_capable_version_tag(system_tags: List[str]) -> bool:
     """Check client version tag whether it is known to support heartbeats or not"""
     try:
         version_tags = [tag for tag in system_tags if tag.startswith('metaflow_version:')]
@@ -171,32 +171,32 @@ def has_heartbeat_capable_version_tag(system_tags):
 
 
 class DBConfiguration(object):
-    host: str = None
-    port: int = None
-    user: str = None
-    password: str = None
-    database_name: str = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
+    database_name: Optional[str] = None
 
-    # aiopg default pool sizes
-    # https://aiopg.readthedocs.io/en/stable/_modules/aiopg/pool.html#create_pool
-    pool_min: int = None  # aiopg default: 1
-    pool_max: int = None  # aiopg default: 10
+    pool_min: Optional[int] = None
+    pool_max: Optional[int] = None
 
-    timeout: int = None  # aiopg default: 60 (seconds)
+    timeout: Optional[int] = None
 
-    _dsn: str = None
+    _dsn: Optional[str] = None
 
-    def __init__(self,
-                 dsn: str = None,
-                 host: str = "localhost",
-                 port: int = 5432,
-                 user: str = "postgres",
-                 password: str = "postgres",
-                 database_name: str = "postgres",
-                 prefix="MF_METADATA_DB_",
-                 pool_min: int = 1,
-                 pool_max: int = 10,
-                 timeout: int = 60):
+    def __init__(
+        self,
+        dsn: Optional[str] = None,
+        host: str = "localhost",
+        port: int = 5432,
+        user: str = "postgres",
+        password: str = "postgres",
+        database_name: str = "postgres",
+        prefix: str = "MF_METADATA_DB_",
+        pool_min: int = 1,
+        pool_max: int = 10,
+        timeout: int = 60,
+    ) -> None:
 
         self._dsn = os.environ.get(prefix + "DSN", dsn)
         # Check if it is a BAD DSN String.
@@ -237,7 +237,7 @@ class DBConfiguration(object):
         self.timeout = int(os.environ.get(prefix + "TIMEOUT", timeout))
 
     @staticmethod
-    def _is_valid_dsn(dsn):
+    def _is_valid_dsn(dsn: str) -> Optional[bool]:
         try:
             psycopg2.extensions.parse_dsn(dsn)
             return True
@@ -246,12 +246,12 @@ class DBConfiguration(object):
             return None
 
     @property
-    def connection_string_url(self):
+    def connection_string_url(self) -> str:
         # postgresql://[user[:password]@][host][:port][/dbname][?param1=value1&...]
         return f'postgresql://{quote(self._user)}:{quote(self._password)}@{self._host}:{self._port}/{self._database_name}?sslmode=disable'
 
     @property
-    def dsn(self):
+    def dsn(self) -> str:
         if self._dsn is None:
             return psycopg2.extensions.make_dsn(
                 dbname=self._database_name,
@@ -264,21 +264,21 @@ class DBConfiguration(object):
             return self._dsn
 
     @property
-    def port(self):
+    def port(self) -> int:
         return self._port
 
     @property
-    def password(self):
+    def password(self) -> str:
         return self._password
 
     @property
-    def user(self):
+    def user(self) -> str:
         return self._user
 
     @property
-    def database_name(self):
+    def database_name(self) -> str:
         return self._database_name
 
     @property
-    def host(self):
+    def host(self) -> str:
         return self._host

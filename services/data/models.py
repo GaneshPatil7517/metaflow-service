@@ -1,13 +1,24 @@
 import time
+from typing import Any, Dict, List, Optional, Union
+
 from .db_utils import get_exposed_run_id, get_exposed_task_id
 
 
 class FlowRow(object):
-    flow_id: str = None
-    user_name: str = None
-    ts_epoch: int = 0
+    flow_id: str
+    user_name: str
+    ts_epoch: int
+    tags: Optional[List[str]]
+    system_tags: Optional[List[str]]
 
-    def __init__(self, flow_id, user_name, ts_epoch=None, tags=None, system_tags=None):
+    def __init__(
+        self,
+        flow_id: str,
+        user_name: str,
+        ts_epoch: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+        system_tags: Optional[List[str]] = None,
+    ) -> None:
         self.flow_id = flow_id
         self.user_name = user_name
         if ts_epoch is None:
@@ -16,7 +27,7 @@ class FlowRow(object):
         self.tags = tags
         self.system_tags = system_tags
 
-    def serialize(self, expanded: bool = False):
+    def serialize(self, expanded: bool = False) -> Dict[str, Any]:
         return {
             "flow_id": self.flow_id,
             "user_name": self.user_name,
@@ -27,23 +38,26 @@ class FlowRow(object):
 
 
 class RunRow(object):
-    flow_id: str = None
-    run_number: int = None
-    run_id: str = None
-    user_name: str = None
-    ts_epoch: int = 0
+    flow_id: str
+    run_number: Optional[int]
+    run_id: Optional[str]
+    user_name: str
+    ts_epoch: int
+    tags: Optional[List[str]]
+    system_tags: Optional[List[str]]
+    last_heartbeat_ts: Optional[int]
 
     def __init__(
         self,
-        flow_id,
-        user_name,
-        run_number=None,
-        run_id=None,
-        ts_epoch=None,
-        tags=None,
-        system_tags=None,
-        last_heartbeat_ts=None,
-    ):
+        flow_id: str,
+        user_name: str,
+        run_number: Optional[int] = None,
+        run_id: Optional[str] = None,
+        ts_epoch: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+        system_tags: Optional[List[str]] = None,
+        last_heartbeat_ts: Optional[int] = None,
+    ) -> None:
         self.flow_id = flow_id
         self.user_name = user_name
         self.run_number = run_number
@@ -56,7 +70,7 @@ class RunRow(object):
         self.ts_epoch = ts_epoch
         self.last_heartbeat_ts = last_heartbeat_ts
 
-    def serialize(self, expanded: bool = False):
+    def serialize(self, expanded: bool = False) -> Dict[str, Any]:
         if expanded:
             return {
                 "flow_id": self.flow_id,
@@ -81,26 +95,26 @@ class RunRow(object):
 
 
 class StepRow(object):
-    flow_id: str = None
-    run_number: int = None
-    run_id: str = None
-    step_name: str = None
-    user_name: str = None
-    ts_epoch: int = 0
-    tags = None
-    system_tags = None
+    flow_id: str
+    run_number: int
+    run_id: Optional[str]
+    step_name: str
+    user_name: str
+    ts_epoch: int
+    tags: Optional[List[str]]
+    system_tags: Optional[List[str]]
 
     def __init__(
         self,
-        flow_id,
-        run_number,
-        run_id,
-        user_name,
-        step_name,
-        ts_epoch=None,
-        tags=None,
-        system_tags=None,
-    ):
+        flow_id: str,
+        run_number: int,
+        run_id: Optional[str],
+        user_name: str,
+        step_name: str,
+        ts_epoch: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+        system_tags: Optional[List[str]] = None,
+    ) -> None:
         self.flow_id = flow_id
         self.run_number = run_number
 
@@ -117,7 +131,7 @@ class StepRow(object):
         self.tags = tags
         self.system_tags = system_tags
 
-    def serialize(self, expanded: bool = False):
+    def serialize(self, expanded: bool = False) -> Dict[str, Any]:
         if expanded:
             return {
                 "flow_id": self.flow_id,
@@ -142,31 +156,32 @@ class StepRow(object):
 
 
 class TaskRow(object):
-    flow_id: str = None
-    run_number: int = None
-    run_id: str = None
-    step_name: str = None
-    task_id: int = None
-    task_name: str = None
-    user_name: str = None
-    ts_epoch: int = 0
-    tags = None
-    system_tags = None
+    flow_id: str
+    run_number: int
+    run_id: Optional[str]
+    step_name: str
+    task_id: Optional[int]
+    task_name: Optional[str]
+    user_name: str
+    ts_epoch: int
+    tags: Optional[List[str]]
+    system_tags: Optional[List[str]]
+    last_heartbeat_ts: Optional[int]
 
     def __init__(
         self,
-        flow_id,
-        run_number,
-        run_id,
-        user_name,
-        step_name,
-        task_id=None,
-        task_name=None,
-        ts_epoch=None,
-        tags=None,
-        system_tags=None,
-        last_heartbeat_ts=None,
-    ):
+        flow_id: str,
+        run_number: int,
+        run_id: Optional[str],
+        user_name: str,
+        step_name: str,
+        task_id: Optional[int] = None,
+        task_name: Optional[str] = None,
+        ts_epoch: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+        system_tags: Optional[List[str]] = None,
+        last_heartbeat_ts: Optional[int] = None,
+    ) -> None:
         self.flow_id = flow_id
         self.run_number = run_number
         self.run_id = run_id
@@ -182,7 +197,7 @@ class TaskRow(object):
         self.system_tags = system_tags
         self.last_heartbeat_ts = last_heartbeat_ts
 
-    def serialize(self, expanded: bool = False):
+    def serialize(self, expanded: bool = False) -> Dict[str, Any]:
         if expanded:
             return {
                 "flow_id": self.flow_id,
@@ -212,38 +227,38 @@ class TaskRow(object):
 
 
 class MetadataRow(object):
-    flow_id: str = None
-    run_number: int = None
-    run_id: str = None
-    step_name: str = None
-    task_id: int = None
-    task_name: str = None
-    id: int = None  # autoincrement
-    field_name: str = None
-    value: dict = None
-    type: str = None
-    user_name: str = None
-    ts_epoch: int = 0
-    tags = None
-    system_tags = None
+    flow_id: str
+    run_number: int
+    run_id: Optional[str]
+    step_name: str
+    task_id: int
+    task_name: Optional[str]
+    id: int
+    field_name: str
+    value: str
+    type: str
+    user_name: str
+    ts_epoch: int
+    tags: Optional[List[str]]
+    system_tags: Optional[List[str]]
 
     def __init__(
         self,
-        flow_id,
-        run_number,
-        run_id,
-        step_name,
-        task_id,
-        task_name,
-        id,
-        field_name,
-        value,
-        type,
-        user_name,
-        ts_epoch=None,
-        tags=None,
-        system_tags=None,
-    ):
+        flow_id: str,
+        run_number: int,
+        run_id: Optional[str],
+        step_name: str,
+        task_id: int,
+        task_name: Optional[str],
+        id: int,
+        field_name: str,
+        value: str,
+        type: str,
+        user_name: str,
+        ts_epoch: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+        system_tags: Optional[List[str]] = None,
+    ) -> None:
         self.flow_id = flow_id
         self.run_number = run_number
         self.run_id = run_id
@@ -262,7 +277,7 @@ class MetadataRow(object):
         self.tags = tags
         self.system_tags = system_tags
 
-    def serialize(self, expanded: bool = False):
+    def serialize(self, expanded: bool = False) -> Dict[str, Any]:
         return {
             "id": self.id,
             "flow_id": self.flow_id,
@@ -280,41 +295,44 @@ class MetadataRow(object):
 
 
 class ArtifactRow(object):
-    flow_id: str = None
-    run_number: int = None
-    run_id: str = None
-    step_name: str = None
-    task_id: int = None
-    task_name: str = None
-    name: str = None
-    location: str = None
-    sha: str = None
-    type: str = None
-    content_type: str = None
-    user_name: str = None
-    attempt_id: int = 0
-    ts_epoch: int = 0
+    flow_id: str
+    run_number: int
+    run_id: Optional[str]
+    step_name: str
+    task_id: int
+    task_name: Optional[str]
+    name: str
+    location: str
+    ds_type: str
+    sha: Optional[str]
+    type: Optional[str]
+    content_type: Optional[str]
+    user_name: str
+    attempt_id: int
+    ts_epoch: int
+    tags: Optional[List[str]]
+    system_tags: Optional[List[str]]
 
     def __init__(
         self,
-        flow_id,
-        run_number,
-        run_id,
-        step_name,
-        task_id,
-        task_name,
-        name,
-        location,
-        ds_type,
-        sha,
-        type,
-        content_type,
-        user_name,
-        attempt_id,
-        ts_epoch=None,
-        tags=None,
-        system_tags=None,
-    ):
+        flow_id: str,
+        run_number: int,
+        run_id: Optional[str],
+        step_name: str,
+        task_id: int,
+        task_name: Optional[str],
+        name: str,
+        location: str,
+        ds_type: str,
+        sha: Optional[str],
+        type: Optional[str],
+        content_type: Optional[str],
+        user_name: str,
+        attempt_id: int,
+        ts_epoch: Optional[int] = None,
+        tags: Optional[List[str]] = None,
+        system_tags: Optional[List[str]] = None,
+    ) -> None:
         self.flow_id = flow_id
         self.run_number = run_number
         self.run_id = run_id
@@ -336,7 +354,7 @@ class ArtifactRow(object):
         self.tags = tags
         self.system_tags = system_tags
 
-    def serialize(self, expanded: bool = False):
+    def serialize(self, expanded: bool = False) -> Dict[str, Any]:
         return {
             "flow_id": self.flow_id,
             "run_number": get_exposed_run_id(self.run_number, self.run_id),

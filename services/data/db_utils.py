@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple, Union
 import psycopg2
 import collections
 import datetime
@@ -12,7 +12,7 @@ DBResponse = collections.namedtuple("DBResponse", "response_code body")
 DBPagination = collections.namedtuple("DBPagination", "limit offset count page")
 
 
-def aiopg_exception_handling(exception):
+def aiopg_exception_handling(exception: Exception) -> DBResponse:
     err_msg = str(exception)
     body = {"err_msg": err_msg}
     if isinstance(exception, asyncio.TimeoutError):
@@ -52,37 +52,37 @@ def aiopg_exception_handling(exception):
         return DBResponse(response_code=500, body=json.dumps(body))
 
 
-def get_db_ts_epoch_str():
+def get_db_ts_epoch_str() -> str:
     return str(int(round(time.time() * 1000)))
 
 
-def new_heartbeat_ts():
+def new_heartbeat_ts() -> int:
     return int(datetime.datetime.utcnow().timestamp())
 
 
-def translate_run_key(v: str):
+def translate_run_key(v: str) -> Tuple[str, str]:
     value = str(v)
     return "run_number" if value.isnumeric() else "run_id", value
 
 
-def translate_task_key(v: str):
+def translate_task_key(v: str) -> Tuple[str, str]:
     value = str(v)
     return "task_id" if value.isnumeric() else "task_name", value
 
 
-def get_exposed_run_id(run_number, run_id):
+def get_exposed_run_id(run_number: int, run_id: Union[str, None]) -> Union[str, int]:
     if run_id is not None:
         return run_id
     return run_number
 
 
-def get_exposed_task_id(task_id, task_name):
+def get_exposed_task_id(task_id: int, task_name: Union[str, None]) -> Union[str, int]:
     if task_name is not None:
         return task_name
     return task_id
 
 
-def get_latest_attempt_id_for_tasks(artifacts):
+def get_latest_attempt_id_for_tasks(artifacts: List[Dict[str, Any]]) -> Dict[str, int]:
     attempt_ids = {}
     for artifact in artifacts:
         attempt_ids[artifact["task_id"]] = max(
