@@ -1,6 +1,7 @@
 from aiohttp import web
 from services.data.postgres_async_db import AsyncPostgresDB
 from services.data.db_utils import (
+    DBResponse,
     filter_artifacts_for_latest_attempt,
     filter_artifacts_by_attempt_id_for_tasks,
 )
@@ -18,7 +19,7 @@ class ArtificatsApi(object):
 
     _artifact_table = None
 
-    def __init__(self, app):
+    def __init__(self, app: web.Application) -> None:
         app.router.add_route(
             "GET",
             "/flows/{flow_id}/runs/{run_number}/steps/{step_name}/"
@@ -65,7 +66,7 @@ class ArtificatsApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_artifact(self, request):
+    async def get_artifact(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get all artifacts associated with the specified task.
@@ -119,7 +120,7 @@ class ArtificatsApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_artifact_with_attempt(self, request):
+    async def get_artifact_with_attempt(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get all artifacts associated with the specified task.
@@ -177,7 +178,7 @@ class ArtificatsApi(object):
         db_response = await apply_run_tags_to_db_response(flow_id, run_number, self._async_run_table, db_response)
         return db_response
 
-    async def get_artifacts_by_task(self, request):
+    async def get_artifacts_by_task(self, request: web.Request) -> web.Response:
         """
         ---
         description: get all artifacts associated with the specified task.
@@ -232,7 +233,7 @@ class ArtificatsApi(object):
                 body=json.dumps(http_500(db_response.body)),
             )
 
-    async def get_artifacts_by_task_attempt(self, request):
+    async def get_artifacts_by_task_attempt(self, request: web.Request) -> web.Response:
         """
         ---
         description: get all artifacts associated with the specified task.
@@ -300,7 +301,7 @@ class ArtificatsApi(object):
                 body=json.dumps(http_500(db_response.body)),
             )
 
-    async def get_artifacts_by_step(self, request):
+    async def get_artifacts_by_step(self, request: web.Request) -> web.Response:
         """
         ---
         description: get all artifacts associated with the specified task.
@@ -349,7 +350,7 @@ class ArtificatsApi(object):
                 body=json.dumps(http_500(db_response.body)),
             )
 
-    async def get_artifacts_by_run(self, request):
+    async def get_artifacts_by_run(self, request: web.Request) -> web.Response:
         """
         ---
         description: get all artifacts associated with the specified task.
@@ -390,7 +391,7 @@ class ArtificatsApi(object):
                 body=json.dumps(http_500(db_response.body)),
             )
 
-    async def create_artifacts(self, request):
+    async def create_artifacts(self, request: web.Request) -> web.Response:
         """
         ---
         description: This end-point allow to test that service is up.

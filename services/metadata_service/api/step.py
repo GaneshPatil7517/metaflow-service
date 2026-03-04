@@ -1,15 +1,17 @@
 from services.data import StepRow
+from services.data.db_utils import DBResponse
 from services.data.tagging_utils import apply_run_tags_to_db_response
 from services.utils import read_body
 from services.metadata_service.api.utils import format_response, \
     handle_exceptions
 from services.data.postgres_async_db import AsyncPostgresDB
+from aiohttp import web
 
 
 class StepApi(object):
     _step_table = None
 
-    def __init__(self, app):
+    def __init__(self, app: web.Application) -> None:
         app.router.add_route(
             "GET", "/flows/{flow_id}/runs/{run_number}/steps", self.get_steps
         )
@@ -28,7 +30,7 @@ class StepApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_steps(self, request):
+    async def get_steps(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get all steps associated with the specified run.
@@ -61,7 +63,7 @@ class StepApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_step(self, request):
+    async def get_step(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get specified step.
@@ -105,7 +107,7 @@ class StepApi(object):
 
     @format_response
     @handle_exceptions
-    async def create_step(self, request):
+    async def create_step(self, request: web.Request) -> DBResponse:
         """
         ---
         description: Create step.

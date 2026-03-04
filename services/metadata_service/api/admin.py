@@ -16,14 +16,14 @@ from services.metadata_service.api.utils import METADATA_SERVICE_VERSION, \
 
 
 class AuthApi(object):
-    def __init__(self, app):
+    def __init__(self, app: web.Application) -> None:
         app.router.add_route("GET", "/auth/token",
                              self.get_authorization_token)
         app.router.add_route("GET", "/ping", self.ping)
         app.router.add_route("GET", "/version", self.version)
         app.router.add_route("GET", "/healthcheck", self.healthcheck)
 
-    async def version(self, request):
+    async def version(self, request: web.Request) -> web.Response:
         """
         ---
         description: Returns the version of the metadata service
@@ -39,7 +39,7 @@ class AuthApi(object):
         """
         return web.Response(text=str(METADATA_SERVICE_VERSION))
 
-    async def ping(self, request):
+    async def ping(self, request: web.Request) -> web.Response:
         """
         ---
         description: This end-point allow to test that service is up.
@@ -56,7 +56,7 @@ class AuthApi(object):
         return web.Response(text="pong", headers=MultiDict(
             {METADATA_SERVICE_HEADER: METADATA_SERVICE_VERSION}))
 
-    async def healthcheck(self, request):
+    async def healthcheck(self, request: web.Request) -> web.Response:
         """
         ---
         description: This end-point allow to test that service is up and
@@ -92,7 +92,7 @@ class AuthApi(object):
             cur.close()
         return web_response(status=status_code, body=json.dumps(status))
 
-    async def get_authorization_token(self, request):
+    async def get_authorization_token(self, request: web.Request) -> web.Response:
         """
         ---
         description: this is used exclusively for sandbox auth

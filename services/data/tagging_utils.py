@@ -1,8 +1,10 @@
+from typing import Any
+
 from services.data.db_utils import DBResponse
 import copy
 
 
-async def apply_run_tags_to_db_response(flow_id, run_number, run_table_postgres, db_response: DBResponse) -> DBResponse:
+async def apply_run_tags_to_db_response(flow_id: str, run_number: str, run_table_postgres: Any, db_response: DBResponse) -> DBResponse:
     """
     We want read APIs to return steps, tasks and artifact objects with tags
     and system_tags set to their ancestral Run.

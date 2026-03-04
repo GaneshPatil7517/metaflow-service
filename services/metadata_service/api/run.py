@@ -7,13 +7,14 @@ from services.utils import has_heartbeat_capable_version_tag, read_body
 from services.metadata_service.api.utils import format_response, \
     handle_exceptions
 from services.data.postgres_async_db import AsyncPostgresDB
+from aiohttp import web
 
 
 class RunApi(object):
     _run_table = None
     lock = asyncio.Lock()
 
-    def __init__(self, app):
+    def __init__(self, app: web.Application) -> None:
         app.router.add_route("GET", "/flows/{flow_id}/runs", self.get_all_runs)
         app.router.add_route(
             "GET", "/flows/{flow_id}/runs/{run_number}", self.get_run)
@@ -28,7 +29,7 @@ class RunApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_run(self, request):
+    async def get_run(self, request: web.Request) -> DBResponse:
         """
         ---
         description: Get run by run number
@@ -61,7 +62,7 @@ class RunApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_all_runs(self, request):
+    async def get_all_runs(self, request: web.Request) -> DBResponse:
         """
         ---
         description: Get all runs
@@ -86,7 +87,7 @@ class RunApi(object):
 
     @format_response
     @handle_exceptions
-    async def create_run(self, request):
+    async def create_run(self, request: web.Request) -> DBResponse:
         """
         ---
         description: create run and generate run id
@@ -144,7 +145,7 @@ class RunApi(object):
 
     @format_response
     @handle_exceptions
-    async def mutate_user_tags(self, request):
+    async def mutate_user_tags(self, request: web.Request) -> DBResponse:
         """
         ---
         description: mutate user tags
@@ -242,7 +243,7 @@ class RunApi(object):
 
     @format_response
     @handle_exceptions
-    async def runs_heartbeat(self, request):
+    async def runs_heartbeat(self, request: web.Request) -> DBResponse:
         """
         ---
         description: update hb

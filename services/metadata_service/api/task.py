@@ -1,5 +1,6 @@
 from services.data import TaskRow
 from services.data.postgres_async_db import AsyncPostgresDB
+from services.data.db_utils import DBResponse
 from services.data.tagging_utils import apply_run_tags_to_db_response
 from services.utils import has_heartbeat_capable_version_tag, read_body
 from services.metadata_service.api.utils import format_response, \
@@ -13,7 +14,7 @@ class TaskApi(object):
     _task_table = None
     lock = asyncio.Lock()
 
-    def __init__(self, app):
+    def __init__(self, app: web.Application) -> None:
         app.router.add_route(
             "GET",
             "/flows/{flow_id}/runs/{run_number}/steps/{step_name}/tasks",
@@ -38,7 +39,7 @@ class TaskApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_tasks(self, request):
+    async def get_tasks(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get all tasks associated with the specified step.
@@ -78,7 +79,7 @@ class TaskApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_task(self, request):
+    async def get_task(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get all artifacts associated with the specified task.
@@ -125,7 +126,7 @@ class TaskApi(object):
 
     @format_response
     @handle_exceptions
-    async def create_task(self, request):
+    async def create_task(self, request: web.Request) -> DBResponse:
         """
         ---
         description: This end-point allow to test that service is up.
@@ -211,7 +212,7 @@ class TaskApi(object):
 
     @format_response
     @handle_exceptions
-    async def tasks_heartbeat(self, request):
+    async def tasks_heartbeat(self, request: web.Request) -> DBResponse:
         """
         ---
         description: update hb

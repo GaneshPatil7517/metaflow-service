@@ -1,5 +1,6 @@
 import json
 from functools import wraps
+from typing import Any, Callable, Optional
 
 import pkg_resources
 import collections
@@ -15,7 +16,7 @@ METADATA_SERVICE_HEADER = 'METADATA_SERVICE_VERSION'
 ServiceResponse = collections.namedtuple("ServiceResponse", "response_code body")
 
 
-def format_response(func):
+def format_response(func: Callable) -> Callable:
     """handle formatting"""
 
     @wraps(func)
@@ -29,7 +30,7 @@ def format_response(func):
     return wrapper
 
 
-def web_response(status: int, body):
+def web_response(status: int, body: Any) -> web.Response:
     return web.Response(status=status,
                         body=json.dumps(body),
                         headers=MultiDict(
@@ -37,7 +38,7 @@ def web_response(status: int, body):
                              METADATA_SERVICE_HEADER: METADATA_SERVICE_VERSION}))
 
 
-def http_500(msg, traceback_str=None):
+def http_500(msg: str, traceback_str: Optional[str] = None) -> "ServiceResponse":
     # NOTE: worth considering if we want to expose tracebacks in the future in the api messages.
     if traceback_str is None:
         traceback_str = get_traceback_str()
@@ -52,7 +53,7 @@ def http_500(msg, traceback_str=None):
     return ServiceResponse(500, body)
 
 
-def handle_exceptions(func):
+def handle_exceptions(func: Callable) -> Callable:
     """Catch exceptions and return appropriate HTTP error."""
 
     @wraps(func)

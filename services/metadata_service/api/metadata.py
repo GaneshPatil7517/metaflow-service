@@ -1,5 +1,6 @@
 from aiohttp import web
 import json
+from services.data.db_utils import DBResponse
 from services.utils import read_body
 from services.metadata_service.api.utils import format_response, \
     handle_exceptions
@@ -11,7 +12,7 @@ class MetadataApi(object):
     _metadata_table = None
     lock = asyncio.Lock()
 
-    def __init__(self, app):
+    def __init__(self, app: web.Application) -> None:
         app.router.add_route(
             "GET",
             "/flows/{flow_id}/runs/{run_number}/steps/{step_name}/"
@@ -34,7 +35,7 @@ class MetadataApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_metadata(self, request):
+    async def get_metadata(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get all metadata associated with the specified task.
@@ -79,7 +80,7 @@ class MetadataApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_metadata_by_run(self, request):
+    async def get_metadata_by_run(self, request: web.Request) -> DBResponse:
         """
         ---
         description: get all metadata associated with the specified run.
@@ -110,7 +111,7 @@ class MetadataApi(object):
             flow_name, run_number
         )
 
-    async def create_metadata(self, request):
+    async def create_metadata(self, request: web.Request) -> web.Response:
         """
         ---
         description: persist metadata

@@ -1,16 +1,18 @@
 from services.data import FlowRow
 from services.data.postgres_async_db import AsyncPostgresDB
+from services.data.db_utils import DBResponse
 from services.utils import read_body
 from services.metadata_service.api.utils import format_response, \
     handle_exceptions
 import asyncio
+from aiohttp import web
 
 
 class FlowApi(object):
     _flow_table = None
     lock = asyncio.Lock()
 
-    def __init__(self, app):
+    def __init__(self, app: web.Application) -> None:
         app.router.add_route("GET", "/flows", self.get_all_flows)
         app.router.add_route("GET", "/flows/{flow_id}", self.get_flow)
         app.router.add_route("POST", "/flows/{flow_id}", self.create_flow)
@@ -18,7 +20,7 @@ class FlowApi(object):
 
     @format_response
     @handle_exceptions
-    async def create_flow(self, request):
+    async def create_flow(self, request: web.Request) -> DBResponse:
         """
         ---
         description: create/register a flow
@@ -65,7 +67,7 @@ class FlowApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_flow(self, request):
+    async def get_flow(self, request: web.Request) -> DBResponse:
         """
         ---
         description: Get flow by id
@@ -93,7 +95,7 @@ class FlowApi(object):
 
     @format_response
     @handle_exceptions
-    async def get_all_flows(self, request):
+    async def get_all_flows(self, request: web.Request) -> DBResponse:
         """
         ---
         description: Get all flows
