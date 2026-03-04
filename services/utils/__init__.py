@@ -6,6 +6,7 @@ import pkg_resources
 from multidict import MultiDict
 from urllib.parse import urlencode, quote
 from aiohttp import web
+from aiohttp.streams import StreamReader
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
 import logging
@@ -31,7 +32,7 @@ logging.basicConfig(level=log_level)
 ORIGIN_TO_ALLOW_CORS_FROM = os.environ.get('ORIGIN_TO_ALLOW_CORS_FROM', None)
 
 
-async def read_body(request_content: web.StreamResponse) -> Any:
+async def read_body(request_content: StreamReader) -> Any:
     byte_array = bytearray()
     while not request_content.at_eof():
         data = await request_content.read(4)
@@ -57,8 +58,10 @@ def get_traceback_str() -> str:
     )
 
 
-def http_500(msg: str, id: Optional[str], traceback_str: str = get_traceback_str()) -> web.Response:
+def http_500(msg: str, id: Optional[str], traceback_str: Optional[str] = None) -> web.Response:
     # NOTE: worth considering if we want to expose tracebacks in the future in the api messages.
+    if traceback_str is None:
+        traceback_str = get_traceback_str()
     body = {
         'id': id,
         'traceback': traceback_str,

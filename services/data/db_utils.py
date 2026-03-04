@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Dict, Any, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple, Union
 import psycopg2
 import collections
 import datetime
@@ -70,13 +70,13 @@ def translate_task_key(v: str) -> Tuple[str, str]:
     return "task_id" if value.isnumeric() else "task_name", value
 
 
-def get_exposed_run_id(run_number: int, run_id: Union[str, None]) -> Union[str, int]:
+def get_exposed_run_id(run_number: Optional[int], run_id: Optional[str]) -> Union[str, int, None]:
     if run_id is not None:
         return run_id
     return run_number
 
 
-def get_exposed_task_id(task_id: int, task_name: Union[str, None]) -> Union[str, int]:
+def get_exposed_task_id(task_id: Optional[int], task_name: Optional[str]) -> Union[str, int, None]:
     if task_name is not None:
         return task_name
     return task_id
