@@ -164,9 +164,11 @@ class AsyncPostgresTable(object):
                     table_name=self.table_name, keys=self.trigger_keys))
             await PostgresUtils.setup_trigger_notify(db=self.db, table_name=self.table_name, keys=self.trigger_keys)
 
-    async def get_records(self, filter_dict: Dict[str, Any] = {}, fetch_single: bool = False,
+    async def get_records(self, filter_dict: Optional[Dict[str, Any]] = None, fetch_single: bool = False,
                           ordering: Optional[List[str]] = None, limit: int = 0, expanded: bool = False,
                           cur: Optional[aiopg.Cursor] = None) -> DBResponse:
+        if filter_dict is None:
+            filter_dict = {}
         conditions = []
         values = []
         for col_name, col_val in filter_dict.items():
@@ -179,9 +181,11 @@ class AsyncPostgresTable(object):
         )
         return response
 
-    async def find_records(self, conditions: Optional[List[str]] = None, values: List[Any] = [], fetch_single: bool = False,
+    async def find_records(self, conditions: Optional[List[str]] = None, values: Optional[List[Any]] = None, fetch_single: bool = False,
                            limit: int = 0, offset: int = 0, order: Optional[List[str]] = None, expanded: bool = False,
                            enable_joins: bool = False, cur: Optional[aiopg.Cursor] = None) -> Tuple[DBResponse, DBPagination]:
+        if values is None:
+            values = []
         sql_template = """
         SELECT * FROM (
             SELECT
@@ -209,9 +213,11 @@ class AsyncPostgresTable(object):
         return await self.execute_sql(select_sql=select_sql, values=values, fetch_single=fetch_single,
                                       expanded=expanded, limit=limit, offset=offset, cur=cur)
 
-    async def execute_sql(self, select_sql: str, values: List[Any] = [], fetch_single: bool = False,
+    async def execute_sql(self, select_sql: str, values: Optional[List[Any]] = None, fetch_single: bool = False,
                           expanded: bool = False, limit: int = 0, offset: int = 0,
                           cur: Optional[aiopg.Cursor] = None) -> Tuple[DBResponse, DBPagination]:
+        if values is None:
+            values = []
         async def _execute_on_cursor(_cur):
             await _cur.execute(select_sql, values)
 
@@ -316,7 +322,11 @@ class AsyncPostgresTable(object):
             self.db.logger.exception("Exception occurred")
             return aiopg_exception_handling(error)
 
-    async def update_row(self, filter_dict: Dict[str, Any] = {}, update_dict: Dict[str, Any] = {}, cur: Optional[aiopg.Cursor] = None) -> DBResponse:
+    async def update_row(self, filter_dict: Optional[Dict[str, Any]] = None, update_dict: Optional[Dict[str, Any]] = None, cur: Optional[aiopg.Cursor] = None) -> DBResponse:
+        if filter_dict is None:
+            filter_dict = {}
+        if update_dict is None:
+            update_dict = {}
         # generate where clause
         filters = []
         for col_name, col_val in filter_dict.items():
@@ -377,8 +387,10 @@ class AsyncPostgresTable(object):
 
 class PostgresUtils(object):
     @staticmethod
-    async def create_trigger_if_missing(db: _AsyncPostgresDB, table_name: str, trigger_name: str, commands: List[str] = []) -> None:
+    async def create_trigger_if_missing(db: _AsyncPostgresDB, table_name: str, trigger_name: str, commands: Optional[List[str]] = None) -> None:
         "executes the commands only if a trigger with the given name does not already exist on the table"
+        if commands is None:
+            commands = []
         with (await db.pool.cursor()) as cur:
             try:
                 await cur.execute(
@@ -400,7 +412,7 @@ class PostgresUtils(object):
     @staticmethod
     async def setup_trigger_notify(db: _AsyncPostgresDB, table_name: str, keys: Optional[List[str]] = None, schema: str = DB_SCHEMA_NAME) -> None:
         if not keys:
-            pass
+            raise ValueError("setup_trigger_notify: 'keys' must be a non-empty list of column names")
 
         name_prefix = "notify_ui"
         operations = ["INSERT", "UPDATE", "DELETE"]
