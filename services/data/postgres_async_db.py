@@ -8,7 +8,7 @@ import math
 import re
 import time
 from services.utils import logging
-from typing import List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from .db_utils import DBResponse, DBPagination, aiopg_exception_handling, \
     get_db_ts_epoch_str, translate_run_key, translate_task_key, new_heartbeat_ts
@@ -40,18 +40,18 @@ operator_match = re.compile('([^:]*):([=><]+)$')
 
 
 class _AsyncPostgresDB(object):
-    connection = None
-    flow_table_postgres = None
-    run_table_postgres = None
-    step_table_postgres = None
-    task_table_postgres = None
-    artifact_table_postgres = None
-    metadata_table_postgres = None
+    connection: Optional[Any] = None
+    flow_table_postgres: Optional["AsyncFlowTablePostgres"] = None
+    run_table_postgres: Optional["AsyncRunTablePostgres"] = None
+    step_table_postgres: Optional["AsyncStepTablePostgres"] = None
+    task_table_postgres: Optional["AsyncTaskTablePostgres"] = None
+    artifact_table_postgres: Optional["AsyncArtifactTablePostgres"] = None
+    metadata_table_postgres: Optional["AsyncMetadataTablePostgres"] = None
 
-    pool = None
-    db_conf: DBConfiguration = None
+    pool: Optional[aiopg.Pool] = None
+    db_conf: Optional[DBConfiguration] = None
 
-    def __init__(self, name='global'):
+    def __init__(self, name: str = 'global') -> None:
         self.name = name
         self.logger = logging.getLogger("AsyncPostgresDB:{name}".format(name=self.name))
 
@@ -70,7 +70,7 @@ class _AsyncPostgresDB(object):
         tables.append(self.metadata_table_postgres)
         self.tables = tables
 
-    async def _init(self, db_conf: DBConfiguration, create_triggers=DB_TRIGGER_CREATE):
+    async def _init(self, db_conf: DBConfiguration, create_triggers: bool = DB_TRIGGER_CREATE) -> None:
         # todo make poolsize min and max configurable as well as timeout
         # todo add retry and better error message
         retries = max_connection_retires
@@ -100,19 +100,19 @@ class _AsyncPostgresDB(object):
                     raise e
                 time.sleep(connection_retry_wait_time_seconds)
 
-    def get_table_by_name(self, table_name: str):
+    def get_table_by_name(self, table_name: str) -> Optional["AsyncPostgresTable"]:
         for table in self.tables:
             if table.table_name == table_name:
                 return table
         return None
 
-    async def get_run_ids(self, flow_id: str, run_id: str):
+    async def get_run_ids(self, flow_id: str, run_id: str) -> Tuple[int, Optional[str]]:
         run = await self.run_table_postgres.get_run(flow_id, run_id,
                                                     expanded=True)
         return run.body['run_number'], run.body['run_id']
 
     async def get_task_ids(self, flow_id: str, run_id: str,
-                           step_name: str, task_name: str):
+                           step_name: str, task_name: str) -> Tuple[int, Optional[str]]:
 
         task = await self.task_table_postgres.get_task(flow_id, run_id,
                                                        step_name, task_name,
@@ -121,52 +121,52 @@ class _AsyncPostgresDB(object):
 
 
 class AsyncPostgresDB(object):
-    __instance = None
+    __instance: Optional[_AsyncPostgresDB] = None
 
     @staticmethod
-    def get_instance():
+    def get_instance() -> "AsyncPostgresDB":
         return AsyncPostgresDB()
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not AsyncPostgresDB.__instance:
             AsyncPostgresDB.__instance = _AsyncPostgresDB()
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str) -> Any:
         return getattr(AsyncPostgresDB.__instance, name)
 
 
 class AsyncPostgresTable(object):
-    db = None
-    table_name = None
-    schema_version = 1
+    db: Optional[_AsyncPostgresDB] = None
+    table_name: Optional[str] = None
+    schema_version: int = 1
     keys: List[str] = []
-    primary_keys: List[str] = None
-    trigger_keys: List[str] = None
-    ordering: List[str] = None
-    joins: List[str] = None
+    primary_keys: Optional[List[str]] = None
+    trigger_keys: Optional[List[str]] = None
+    ordering: Optional[List[str]] = None
+    joins: Optional[List[str]] = None
     select_columns: List[str] = keys
-    join_columns: List[str] = None
-    _insert_command = None
-    _filters = None
-    _base_query = "SELECT {0} from"
-    _row_type = None
+    join_columns: Optional[List[str]] = None
+    _insert_command: Optional[str] = None
+    _filters: Optional[Any] = None
+    _base_query: str = "SELECT {0} from"
+    _row_type: Optional[Type] = None
 
-    def __init__(self, db: _AsyncPostgresDB = None):
+    def __init__(self, db: Optional[_AsyncPostgresDB] = None) -> None:
         self.db = db
         if self.table_name is None:
             raise NotImplementedError(
                 "need to specify table name")
 
-    async def _init(self, create_triggers: bool):
+    async def _init(self, create_triggers: bool) -> None:
         if create_triggers:
             self.db.logger.info(
                 "Setting up notify trigger for {table_name}\n   Keys: {keys}".format(
                     table_name=self.table_name, keys=self.trigger_keys))
             await PostgresUtils.setup_trigger_notify(db=self.db, table_name=self.table_name, keys=self.trigger_keys)
 
-    async def get_records(self, filter_dict={}, fetch_single=False,
-                          ordering: List[str] = None, limit: int = 0, expanded=False,
-                          cur: aiopg.Cursor = None) -> DBResponse:
+    async def get_records(self, filter_dict: Dict[str, Any] = {}, fetch_single: bool = False,
+                          ordering: Optional[List[str]] = None, limit: int = 0, expanded: bool = False,
+                          cur: Optional[aiopg.Cursor] = None) -> DBResponse:
         conditions = []
         values = []
         for col_name, col_val in filter_dict.items():
@@ -179,9 +179,9 @@ class AsyncPostgresTable(object):
         )
         return response
 
-    async def find_records(self, conditions: List[str] = None, values=[], fetch_single=False,
-                           limit: int = 0, offset: int = 0, order: List[str] = None, expanded=False,
-                           enable_joins=False, cur: aiopg.Cursor = None) -> Tuple[DBResponse, DBPagination]:
+    async def find_records(self, conditions: Optional[List[str]] = None, values: List[Any] = [], fetch_single: bool = False,
+                           limit: int = 0, offset: int = 0, order: Optional[List[str]] = None, expanded: bool = False,
+                           enable_joins: bool = False, cur: Optional[aiopg.Cursor] = None) -> Tuple[DBResponse, DBPagination]:
         sql_template = """
         SELECT * FROM (
             SELECT
@@ -209,9 +209,9 @@ class AsyncPostgresTable(object):
         return await self.execute_sql(select_sql=select_sql, values=values, fetch_single=fetch_single,
                                       expanded=expanded, limit=limit, offset=offset, cur=cur)
 
-    async def execute_sql(self, select_sql: str, values=[], fetch_single=False,
-                          expanded=False, limit: int = 0, offset: int = 0,
-                          cur: aiopg.Cursor = None) -> Tuple[DBResponse, DBPagination]:
+    async def execute_sql(self, select_sql: str, values: List[Any] = [], fetch_single: bool = False,
+                          expanded: bool = False, limit: int = 0, offset: int = 0,
+                          cur: Optional[aiopg.Cursor] = None) -> Tuple[DBResponse, DBPagination]:
         async def _execute_on_cursor(_cur):
             await _cur.execute(select_sql, values)
 
@@ -249,7 +249,7 @@ class AsyncPostgresTable(object):
             self.db.logger.exception("Exception occurred")
             return aiopg_exception_handling(error), None
 
-    async def create_record(self, record_dict):
+    async def create_record(self, record_dict: Dict[str, Any]) -> DBResponse:
         # note: need to maintain order
         cols = []
         values = []
@@ -297,7 +297,7 @@ class AsyncPostgresTable(object):
             self.db.logger.exception("Exception occurred")
             return aiopg_exception_handling(error)
 
-    async def run_in_transaction_with_serializable_isolation_level(self, fun):
+    async def run_in_transaction_with_serializable_isolation_level(self, fun: Callable) -> DBResponse:
         try:
             with (
                     await self.db.pool.cursor(
@@ -316,7 +316,7 @@ class AsyncPostgresTable(object):
             self.db.logger.exception("Exception occurred")
             return aiopg_exception_handling(error)
 
-    async def update_row(self, filter_dict={}, update_dict={}, cur: aiopg.Cursor = None):
+    async def update_row(self, filter_dict: Dict[str, Any] = {}, update_dict: Dict[str, Any] = {}, cur: Optional[aiopg.Cursor] = None) -> DBResponse:
         # generate where clause
         filters = []
         for col_name, col_val in filter_dict.items():
@@ -377,7 +377,7 @@ class AsyncPostgresTable(object):
 
 class PostgresUtils(object):
     @staticmethod
-    async def create_trigger_if_missing(db: _AsyncPostgresDB, table_name, trigger_name, commands=[]):
+    async def create_trigger_if_missing(db: _AsyncPostgresDB, table_name: str, trigger_name: str, commands: List[str] = []) -> None:
         "executes the commands only if a trigger with the given name does not already exist on the table"
         with (await db.pool.cursor()) as cur:
             try:
@@ -398,7 +398,7 @@ class PostgresUtils(object):
                 cur.close()
 
     @staticmethod
-    async def setup_trigger_notify(db: _AsyncPostgresDB, table_name, keys: List[str] = None, schema=DB_SCHEMA_NAME):
+    async def setup_trigger_notify(db: _AsyncPostgresDB, table_name: str, keys: Optional[List[str]] = None, schema: str = DB_SCHEMA_NAME) -> None:
         if not keys:
             pass
 
@@ -474,7 +474,7 @@ class AsyncFlowTablePostgres(AsyncPostgresTable):
     select_columns = keys
     _row_type = FlowRow
 
-    async def add_flow(self, flow: FlowRow):
+    async def add_flow(self, flow: FlowRow) -> DBResponse:
         dict = {
             "flow_id": flow.flow_id,
             "user_name": flow.user_name,
@@ -483,11 +483,11 @@ class AsyncFlowTablePostgres(AsyncPostgresTable):
         }
         return await self.create_record(dict)
 
-    async def get_flow(self, flow_id: str):
+    async def get_flow(self, flow_id: str) -> DBResponse:
         filter_dict = {"flow_id": flow_id}
         return await self.get_records(filter_dict=filter_dict, fetch_single=True)
 
-    async def get_all_flows(self):
+    async def get_all_flows(self) -> DBResponse:
         return await self.get_records()
 
 
@@ -504,7 +504,7 @@ class AsyncRunTablePostgres(AsyncPostgresTable):
     select_columns = keys
     flow_table_name = AsyncFlowTablePostgres.table_name
 
-    async def add_run(self, run: RunRow, fill_heartbeat: bool = False):
+    async def add_run(self, run: RunRow, fill_heartbeat: bool = False) -> DBResponse:
         dict = {
             "flow_id": run.flow_id,
             "user_name": run.user_name,
@@ -515,17 +515,17 @@ class AsyncRunTablePostgres(AsyncPostgresTable):
         }
         return await self.create_record(dict)
 
-    async def get_run(self, flow_id: str, run_id: str, expanded: bool = False, cur: aiopg.Cursor = None):
+    async def get_run(self, flow_id: str, run_id: str, expanded: bool = False, cur: Optional[aiopg.Cursor] = None) -> DBResponse:
         key, value = translate_run_key(run_id)
         filter_dict = {"flow_id": flow_id, key: str(value)}
         return await self.get_records(filter_dict=filter_dict,
                                       fetch_single=True, expanded=expanded, cur=cur)
 
-    async def get_all_runs(self, flow_id: str):
+    async def get_all_runs(self, flow_id: str) -> DBResponse:
         filter_dict = {"flow_id": flow_id}
         return await self.get_records(filter_dict=filter_dict)
 
-    async def update_heartbeat(self, flow_id: str, run_id: str):
+    async def update_heartbeat(self, flow_id: str, run_id: str) -> DBResponse:
         run_key, run_value = translate_run_key(run_id)
         new_hb = new_heartbeat_ts()
         filter_dict = {"flow_id": flow_id,
@@ -541,7 +541,7 @@ class AsyncRunTablePostgres(AsyncPostgresTable):
         return DBResponse(response_code=result.response_code,
                           body=json.dumps(body))
 
-    async def update_run_tags(self, flow_id: str, run_id: str, run_tags: list, cur: aiopg.Cursor = None):
+    async def update_run_tags(self, flow_id: str, run_id: str, run_tags: List[str], cur: Optional[aiopg.Cursor] = None) -> DBResponse:
         run_key, run_value = translate_run_key(run_id)
         filter_dict = {"flow_id": flow_id,
                        run_key: str(run_value)}
@@ -564,7 +564,7 @@ class AsyncStepTablePostgres(AsyncPostgresTable):
     select_columns = keys
     run_table_name = AsyncRunTablePostgres.table_name
 
-    async def add_step(self, step_object: StepRow):
+    async def add_step(self, step_object: StepRow) -> DBResponse:
         dict = {
             "flow_id": step_object.flow_id,
             "run_number": str(step_object.run_number),
@@ -576,13 +576,13 @@ class AsyncStepTablePostgres(AsyncPostgresTable):
         }
         return await self.create_record(dict)
 
-    async def get_steps(self, flow_id: str, run_id: str):
+    async def get_steps(self, flow_id: str, run_id: str) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         filter_dict = {"flow_id": flow_id,
                        run_id_key: run_id_value}
         return await self.get_records(filter_dict=filter_dict)
 
-    async def get_step(self, flow_id: str, run_id: str, step_name: str):
+    async def get_step(self, flow_id: str, run_id: str, step_name: str) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         filter_dict = {
             "flow_id": flow_id,
@@ -605,7 +605,7 @@ class AsyncTaskTablePostgres(AsyncPostgresTable):
     select_columns = keys
     step_table_name = AsyncStepTablePostgres.table_name
 
-    async def add_task(self, task: TaskRow, fill_heartbeat=False):
+    async def add_task(self, task: TaskRow, fill_heartbeat: bool = False) -> DBResponse:
         # todo backfill run_number if missing?
         dict = {
             "flow_id": task.flow_id,
@@ -620,7 +620,7 @@ class AsyncTaskTablePostgres(AsyncPostgresTable):
         }
         return await self.create_record(dict)
 
-    async def get_tasks(self, flow_id: str, run_id: str, step_name: str):
+    async def get_tasks(self, flow_id: str, run_id: str, step_name: str) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         filter_dict = {
             "flow_id": flow_id,
@@ -630,7 +630,7 @@ class AsyncTaskTablePostgres(AsyncPostgresTable):
         return await self.get_records(filter_dict=filter_dict)
 
     async def get_task(self, flow_id: str, run_id: str, step_name: str,
-                       task_id: str, expanded: bool = False):
+                       task_id: str, expanded: bool = False) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         task_id_key, task_id_value = translate_task_key(task_id)
         filter_dict = {
@@ -643,7 +643,7 @@ class AsyncTaskTablePostgres(AsyncPostgresTable):
                                       fetch_single=True, expanded=expanded)
 
     async def update_heartbeat(self, flow_id: str, run_id: str, step_name: str,
-                               task_id: str):
+                               task_id: str) -> DBResponse:
         run_key, run_value = translate_run_key(run_id)
         task_key, task_value = translate_task_key(task_id)
         new_hb = new_heartbeat_ts()
@@ -680,19 +680,19 @@ class AsyncMetadataTablePostgres(AsyncPostgresTable):
 
     async def add_metadata(
         self,
-        flow_id,
-        run_number,
-        run_id,
-        step_name,
-        task_id,
-        task_name,
-        field_name,
-        value,
-        type,
-        user_name,
-        tags,
-        system_tags,
-    ):
+        flow_id: str,
+        run_number: int,
+        run_id: Optional[str],
+        step_name: str,
+        task_id: int,
+        task_name: Optional[str],
+        field_name: str,
+        value: str,
+        type: str,
+        user_name: str,
+        tags: Optional[List[str]],
+        system_tags: Optional[List[str]],
+    ) -> DBResponse:
         dict = {
             "flow_id": flow_id,
             "run_number": str(run_number),
@@ -709,15 +709,15 @@ class AsyncMetadataTablePostgres(AsyncPostgresTable):
         }
         return await self.create_record(dict)
 
-    async def get_metadata_in_runs(self, flow_id: str, run_id: str):
+    async def get_metadata_in_runs(self, flow_id: str, run_id: str) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         filter_dict = {"flow_id": flow_id,
                        run_id_key: run_id_value}
         return await self.get_records(filter_dict=filter_dict)
 
     async def get_metadata(
-        self, flow_id: str, run_id: int, step_name: str, task_id: str
-    ):
+        self, flow_id: str, run_id: str, step_name: str, task_id: str
+    ) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         task_id_key, task_id_value = translate_task_key(task_id)
         filter_dict = {
@@ -747,23 +747,23 @@ class AsyncArtifactTablePostgres(AsyncPostgresTable):
 
     async def add_artifact(
         self,
-        flow_id,
-        run_number,
-        run_id,
-        step_name,
-        task_id,
-        task_name,
-        name,
-        location,
-        ds_type,
-        sha,
-        type,
-        content_type,
-        user_name,
-        attempt_id,
-        tags,
-        system_tags,
-    ):
+        flow_id: str,
+        run_number: int,
+        run_id: Optional[str],
+        step_name: str,
+        task_id: int,
+        task_name: Optional[str],
+        name: str,
+        location: str,
+        ds_type: str,
+        sha: Optional[str],
+        type: Optional[str],
+        content_type: Optional[str],
+        user_name: str,
+        attempt_id: int,
+        tags: Optional[List[str]],
+        system_tags: Optional[List[str]],
+    ) -> DBResponse:
         dict = {
             "flow_id": flow_id,
             "run_number": str(run_number),
@@ -784,7 +784,7 @@ class AsyncArtifactTablePostgres(AsyncPostgresTable):
         }
         return await self.create_record(dict)
 
-    async def get_artifacts_in_runs(self, flow_id: str, run_id: int):
+    async def get_artifacts_in_runs(self, flow_id: str, run_id: str) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         filter_dict = {
             "flow_id": flow_id,
@@ -793,7 +793,7 @@ class AsyncArtifactTablePostgres(AsyncPostgresTable):
         return await self.get_records(filter_dict=filter_dict,
                                       ordering=self.ordering)
 
-    async def get_artifact_in_steps(self, flow_id: str, run_id: int, step_name: str):
+    async def get_artifact_in_steps(self, flow_id: str, run_id: str, step_name: str) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         filter_dict = {
             "flow_id": flow_id,
@@ -804,8 +804,8 @@ class AsyncArtifactTablePostgres(AsyncPostgresTable):
                                       ordering=self.ordering)
 
     async def get_artifact_in_task(
-        self, flow_id: str, run_id: int, step_name: str, task_id: int
-    ):
+        self, flow_id: str, run_id: str, step_name: str, task_id: str
+    ) -> DBResponse:
         run_id_key, run_id_value = translate_run_key(run_id)
         task_id_key, task_id_value = translate_task_key(task_id)
         filter_dict = {
@@ -818,8 +818,8 @@ class AsyncArtifactTablePostgres(AsyncPostgresTable):
                                       ordering=self.ordering)
 
     async def get_artifact(
-        self, flow_id: str, run_id: int, step_name: str, task_id: int, name: str
-    ):
+        self, flow_id: str, run_id: str, step_name: str, task_id: str, name: str
+    ) -> DBResponse:
         # Return the artifact metadata for the latest attempt of the task.
         #
         # The quirk here is that different attempts may have different sets of
@@ -847,8 +847,8 @@ class AsyncArtifactTablePostgres(AsyncPostgresTable):
             flow_id, run_id, step_name, task_id, name, name_record.body.get('attempt_id', 0))
 
     async def get_artifact_by_attempt(
-            self, flow_id: str, run_id: int, step_name: str, task_id: int, name: str,
-            attempt: int):
+            self, flow_id: str, run_id: str, step_name: str, task_id: str, name: str,
+            attempt: int) -> DBResponse:
 
         run_id_key, run_id_value = translate_run_key(run_id)
         task_id_key, task_id_value = translate_task_key(task_id)
